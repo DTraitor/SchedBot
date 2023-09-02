@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "schedulebot"
+version = "0.1.0"
+description = ""
+authors = ["DTraitor <sehhd32@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-telegram-bot = "^20.4"
+requests = "^2.31.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
