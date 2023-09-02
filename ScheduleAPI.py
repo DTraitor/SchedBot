@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 from datetime import date
 from Day import Day
 import requests
@@ -12,10 +12,9 @@ def get_schedule_message(
         schedule_date: date,
         telegram_id: Optional[int],
         token: Optional[str]
-) -> str:
-    result: requests.Response = make_api_get_request("/scheduleBySubgroups", {
-        "group_code": "se-224b",
-        #"telegram_id": telegram_id,
+) -> Tuple[str, bool]:
+    result: requests.Response = make_api_get_request("/scheduleBySubgroupsTg", {
+        "telegram_id": telegram_id,
         "year": schedule_date.year,
         "month": schedule_date.month,
         "day": schedule_date.day,
@@ -23,6 +22,8 @@ def get_schedule_message(
         "token": token
     })
 
-    # if everything is fine
+    if result.status_code != 200:
+        return "Something went wrong", True
 
-    return Day(result.json(), schedule_date).get_telegram_message()
+    # TODO: Remove this [0] and replace with a buttons to select a group
+    return Day(result.json()[0], schedule_date).get_telegram_message(), False

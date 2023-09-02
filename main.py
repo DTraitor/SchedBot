@@ -15,7 +15,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, Defaults, Ca
 from telegram.constants import ParseMode
 
 from datetime import date, timedelta, datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 apiToken: Optional[str] = None
 
@@ -39,11 +39,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     # Log the error before we do anything else, so we can see it even if something breaks.
     logger.error("Exception while handling an update:", exc_info=context.error)
 
-    # traceback.format_exception returns the usual python message about an exception, but as a
-    # list of strings rather than a single string, so we have to join them together.
-    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
-    tb_string = "".join(tb_list)
-
     # Build the message with some markup and additional information about what happened.
     # You might need to add some logic to deal with messages longer than the 4096 character limit.
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
@@ -53,7 +48,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         "</pre>\n\n"
         f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
         f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
-        f"<pre>{html.escape(tb_string)}</pre>"
+        f"<pre>{html.escape(context.error)}</pre>"
     )
 
     # Finally, send the message
@@ -98,10 +93,12 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     ]
 
     global apiToken
-    await update.message.reply_text(
-        ScheduleAPI.get_schedule_message(schedule_date, update.message.chat_id, apiToken),
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    api_result: Tuple[str, bool] = ScheduleAPI.get_schedule_message(schedule_date, update.message.chat_id, apiToken)
+
+    if api_result[1]:
+        await update.message.reply_text(api_result[0])
+    else:
+        await update.message.reply_text(api_result[0], reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 async def tomorrow_schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

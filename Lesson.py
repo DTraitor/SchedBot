@@ -5,6 +5,10 @@ from Teacher import Teacher
 import pytz
 
 
+# Perhaps change it to environment variable
+university_map: str = 'https://www.google.com/maps/d/u/4/edit?mid=1q08ygA-JJCaMu0LrBQxZiJ1fxVq8KD0'
+
+
 class Lesson:
     __slots__ = ["local_id", "names", "lesson_type", "teachers", "comment", "place", "begin_time", "duration"]
     local_id: str
@@ -49,7 +53,11 @@ class Lesson:
         result: str = f'{self.begin_time.strftime("%H:%M")} - '
         result += (datetime.combine(datetime.now(), self.begin_time) + self.duration).strftime("%H:%M")
         result += f' | {self.names[0]} | {self.lesson_type} | {self.teachers[0]} | '
-        result += f'<a href="{self.place}">Посилання</a>' if re.match(r"^https:\\/\\/.*$", self.place) else self.place
+        if re.match(r"^https:\\/\\/.*$", self.place):
+            result += f'<a href="{self.place}">Посилання</a>'
+        else:
+            global university_map
+            result += f'<a href="{university_map}">{self.place}</a>'
 
         if len(self.comment) != 0:
             result += f' // {self.comment}'
