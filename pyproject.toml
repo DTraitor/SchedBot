@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 python-telegram-bot = "^20.4"
 requests = "^2.31.0"
+pytz = "^2023.3"
 
 
 [build-system]
