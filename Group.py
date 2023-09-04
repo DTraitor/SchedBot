@@ -2,12 +2,12 @@ from typing import Tuple
 
 
 class Group:
-    __slots__ = ["code", "names", "desc"]
+    __slots__ = ["code", "name", "desc"]
     code: str
-    names: Tuple[str, str]
+    names: str
     desc: str
 
     def __init__(self, data: dict):
         self.code = data["code"]
-        self.names = (data["names"][0], data["names"][1])
+        self.name = data["names"][0]
         self.desc = data["desc"]

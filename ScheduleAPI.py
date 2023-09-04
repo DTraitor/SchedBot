@@ -10,16 +10,12 @@ def make_api_get_request(url_path: str, data: dict) -> requests.Response:
     return requests.get("https://api.crwnd.dev/schedule/violet" + url_path, data)
 
 
-def get_schedule_message(
-        schedule_date: date,
-        telegram_id: Optional[int],
-        group_code: Optional[str],
-        token: Optional[str]
-) -> Tuple[str, list[list[InlineKeyboardButton]]]:
-
-    url_link: str = "/scheduleBySubgroupsTg" if telegram_id is not None else "/scheduleBySubgroups"
-    result: requests.Response = make_api_get_request(url_link, {
-        "group_code": group_code,
+def get_schedule_data(
+    telegram_id: int,
+    schedule_date: date,
+    token: Optional[str]
+) -> requests.Response:
+    return make_api_get_request('/scheduleBySubgroupsTg', {
         "telegram_id": telegram_id,
         "year": schedule_date.year,
         "month": schedule_date.month,
@@ -28,50 +24,55 @@ def get_schedule_message(
         "token": token
     })
 
-    if result.status_code != 200:
-        match result.content:
-            case "users and groups not found" | "groups not found":
-                return "Нажаль, пов'язаних з цим чатом студентських груп знайдено не було 😔", True
-            case _:
-                return "Щось пішло не так 🕯", []
 
-    result_data: list[dict] = result.json()
-    keyboard: list[list[InlineKeyboardButton]]
-
-    if len(result_data) > 1:
-        keyboard = [[]]
-        group_data: dict
-        for group_data in result_data:
-            if len(keyboard[-1]) >= 3:
-                keyboard.append([])
-            group: Group = Group(group_data["group"])
-            keyboard[-1].append(InlineKeyboardButton(
-                group.names[0],
-                callback_data=f'CHOOSEGROUP|{schedule_date.strftime("%d.%m.%Y")}|{group.code}'
-            ))
-
-        return "До цього чату прив'язано декілька груп. Оберіть потрібну:", keyboard
-    return process_schedule_data(result_data[0], group_code, schedule_date)
+def check_response_for_errors(response: requests.Response) -> Optional[str]:
+    if response.status_code == 200:
+        return None
+    match response.json()["error"]:
+        case "users and groups not found" | "groups not found":
+            return "Нажаль, пов'язаних з цим чатом студентських груп знайдено не було 😔"
+        case _:
+            return "Щось пішло не так 🕯"
 
 
-def process_schedule_data(
+def check_response_for_multiple_groups(
+        response_data: list[dict],
+        schedule_date: date
+) -> Optional[Tuple[str, list[list[InlineKeyboardButton]]]]:
+
+    if len(response_data) <= 1:
+        return None
+
+    keyboard: list[list[InlineKeyboardButton]] = [[]]
+    group_data: dict
+    for group_data in response_data:
+        if len(keyboard[-1]) >= 3:
+            keyboard.append([])
+        group: Group = Group(group_data["group"])
+        keyboard[-1].append(InlineKeyboardButton(
+            group.name,
+            callback_data=f'UPDATE_SCHEDULE|{schedule_date.strftime("%d.%m.%Y")}|{group.code}'
+        ))
+
+    return "До цього чату прив'язано декілька груп. Оберіть потрібну:", keyboard
+
+
+def convert_daydata_to_string(
         data: dict,
-        group_code: Optional[str],
         schedule_date: date
 ) -> Tuple[str, list[list[InlineKeyboardButton]]]:
-
-    if group_code is None:
-        group_code = dict[0]["group"]["code"]
 
     keyboard = [
         [
             InlineKeyboardButton(
                 "⬅️ Попередній день",
-                callback_data=f"SWITCHTABLE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}|{group_code}"
+                callback_data=
+                f"UPDATE_SCHEDULE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}|{data['group']['code']}"
             ),
             InlineKeyboardButton(
                 "Наступний день ➡️",
-                callback_data=f"SWITCHTABLE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}|{group_code}"
+                callback_data=
+                f"UPDATE_SCHEDULE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}|{data['group']['code']}"
             )
         ]
     ]

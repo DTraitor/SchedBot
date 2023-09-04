@@ -31,15 +31,32 @@ class Day:
         result += f'({self.day_date.strftime("%A").capitalize()} {self.week_number}):</b>\n\n'
         result += '<b>Перша підгрупа:</b>\n'
 
+        nums_dict: dict[str, str] = {
+            "0": "0️⃣",
+            "1": "1️⃣",
+            "2": "2️⃣",
+            "3": "3️⃣",
+            "4": "4️⃣",
+            "5": "5️⃣",
+            "6": "6️⃣",
+            "7": "7️⃣",
+            "8": "8️⃣",
+            "9": "9️⃣"
+        }
+
         lesson: Lesson
-        for lesson in self.first_subgroup:
-            result += f'{lesson.get_telegram_message()}\n'
+        for index, lesson in enumerate(self.first_subgroup):
+            for num in str(index + 1):
+                result += nums_dict[num]
+            result += f' | {lesson.get_telegram_message()}\n'
 
         if self.second_subgroup is None:
             return result
 
         result += '\n<b>Друга підгрупа:</b>\n'
-        for lesson in self.second_subgroup:
-            result += f'{lesson.get_telegram_message()}\n'
+        for index, lesson in enumerate(self.second_subgroup):
+            for num in str(index + 1):
+                result += nums_dict[num]
+            result += f' | {lesson.get_telegram_message()}\n'
 
         return result
