@@ -1,4 +1,3 @@
-import traceback
 import logging
 import locale
 import html
@@ -7,15 +6,17 @@ import sys
 import re
 
 import pytz
+import requests
 
 import ScheduleAPI
+import parser
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.ext import Application, CommandHandler, ContextTypes, Defaults, CallbackQueryHandler
 from telegram.constants import ParseMode
 
 from datetime import date, timedelta, datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 apiToken: Optional[str] = None
 
@@ -79,48 +80,35 @@ async def schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await update.message.reply_text("Не вірні аргументи!")
             return
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⬅️ Попередній день",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            ),
-            InlineKeyboardButton(
-                "Наступний день ➡️",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            )
-        ]
-    ]
-
     global apiToken
-    api_result: Tuple[str, bool] = ScheduleAPI.get_schedule_message(schedule_date, update.message.chat_id, apiToken)
+    api_result: Tuple[str, list[list[InlineKeyboardButton]]] = ScheduleAPI.get_schedule_message(
+        schedule_date,
+        update.message.chat_id,
+        apiToken
+    )
 
-    if api_result[1]:
-        await update.message.reply_text(api_result[0])
-    else:
-        await update.message.reply_text(api_result[0], reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text(
+        api_result[0],
+        reply_markup=InlineKeyboardMarkup(api_result[1]),
+        protect_content=True if len(api_result[0]) else False
+    )
 
 
 async def tomorrow_schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     schedule_date: date = date.today() + timedelta(hours=24)
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⬅️ Попередній день",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            ),
-            InlineKeyboardButton(
-                "Наступний день ➡️",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            )
-        ]
-    ]
-
     global apiToken
+    api_result: Tuple[str, list[list[InlineKeyboardButton]]] = ScheduleAPI.get_schedule_message(
+        schedule_date,
+        update.message.chat_id,
+        None,
+        apiToken
+    )
+
     await update.message.reply_text(
-        ScheduleAPI.get_schedule_message(schedule_date, update.message.chat_id, apiToken),
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        api_result[0],
+        reply_markup=InlineKeyboardMarkup(api_result[1]),
+        protect_content=True if len(api_result[0]) else False
     )
 
 
@@ -128,25 +116,56 @@ async def schedule_change_callback(update: Update, context: ContextTypes.DEFAULT
     if not await button_belongs_to_user(update.callback_query):
         return
 
-    schedule_date = datetime.strptime(update.callback_query.data.split("|", 2)[1], "%d.%m.%Y")
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "⬅️ Попередній день",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            ),
-            InlineKeyboardButton(
-                "Наступний день ➡️",
-                callback_data=f"SWITCH_TIMETABLE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}"
-            )
-        ]
-    ]
+    callback_data: list[str] = update.callback_query.data.split("|", 2)
+    schedule_date = datetime.strptime(callback_data[1], "%d.%m.%Y")
 
     global apiToken
-    await update.callback_query.edit_message_text(
-        ScheduleAPI.get_schedule_message(schedule_date, update.callback_query.message.chat_id, apiToken),
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    api_result: Tuple[str, list[list[InlineKeyboardButton]]] = ScheduleAPI.get_schedule_message(
+        schedule_date,
+        update.callback_query.message.chat_id,
+        None,
+        apiToken
     )
+
+    await update.callback_query.edit_message_text(api_result[0], reply_markup=InlineKeyboardMarkup(api_result[1]))
+
+
+async def schedule_choose_group_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await button_belongs_to_user(update.callback_query):
+        return
+
+    callback_data: list[str] = update.callback_query.data.split("|", 2)
+    schedule_date = datetime.strptime(callback_data[1], "%d.%m.%Y")
+
+    global apiToken
+    return_data: requests.Response = ScheduleAPI.make_api_get_request('scheduleBySubgroupsTg', {
+        "telegram_id": update.callback_query.message.chat_id,
+        "year": schedule_date.year,
+        "month": schedule_date.month,
+        "day": schedule_date.day,
+        "show_place": "false" if apiToken is None else "true",
+        "token": apiToken
+    })
+
+    if return_data.status_code != 200:
+        await update.callback_query.answer("Ця група не доступна для вас!", show_alert=True)
+        return
+
+    group_data: dict
+    for group_data in return_data.json():
+        if group_data["group"]["code"] == callback_data[2]:
+            api_result: Tuple[str, list[list[InlineKeyboardButton]]] = ScheduleAPI.process_schedule_data(
+                group_data,
+                callback_data[2],
+                schedule_date
+            )
+            await update.callback_query.edit_message_text(
+                api_result[0],
+                reply_markup=InlineKeyboardMarkup(api_result[1])
+            )
+            return
+
+    await update.callback_query.answer("Ця група не доступна для вас!", show_alert=True)
 
 
 async def button_belongs_to_user(query: CallbackQuery):
@@ -159,9 +178,6 @@ async def button_belongs_to_user(query: CallbackQuery):
 
 
 def main() -> None:
-    if len(sys.argv) <= 1:
-        print("No bot token specified. Please provide BOT_TOKEN environment variable.")
-        return
     bot_token: str = sys.argv[1]
 
     locale.setlocale(locale.LC_ALL, 'uk_UA.UTF-8')
@@ -190,7 +206,12 @@ def main() -> None:
 
     application.add_handler(CallbackQueryHandler(
         schedule_change_callback,
-        pattern=r"^SWITCH_TIMETABLE\|\d{2}.\d{2}.\d{4}$"
+        pattern=r"^SWITCHTABLE\|\d{2}.\d{2}.\d{4}\|.*$"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        schedule_choose_group_callback,
+        pattern=r"^CHOOSEGROUP\|\d{2}.\d{2}.\d{4}\|.*$"
     ))
 
     application.add_error_handler(error_handler)
