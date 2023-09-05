@@ -61,7 +61,7 @@ def schedule_pdf_to_list(filepath: str, pages: range) -> list[APILesson]:
     # Read pdf into list of DataFrame
     dfs = tabula.read_pdf(filepath, pages='all', lattice=True)
 
-    lessons_list: list[Lesson] = []
+    lessons_list: list[list[Lesson]] = []
 
     page: pandas.DataFrame
     lesson: Lesson
@@ -70,10 +70,11 @@ def schedule_pdf_to_list(filepath: str, pages: range) -> list[APILesson]:
     for index, page in enumerate(dfs):
         if pages is not None and index not in pages:
             continue
+        lessons_list.append([])
         for lesson_num in range(0, 36):
             lesson = Lesson()
             lesson.lesson_number = lesson_num % 6
-            lessons_list.append(lesson)
+            lessons_list[-1].append(lesson)
 
         # iterate over columns of the page
         row: pandas.Series
@@ -99,9 +100,9 @@ def schedule_pdf_to_list(filepath: str, pages: range) -> list[APILesson]:
                     lesson.week = 1 if index % 2 == 0 else 2
                     lesson.day = (row.Index - 2) // 6
                     lesson.lesson_number = (row.Index - 2) % 6
-                    lessons_list.append(lesson)
+                    lessons_list[-1].append(lesson)
                 else:
-                    lesson = lessons_list[row.Index - 2]
+                    lesson = lessons_list[-1][row.Index - 2]
                     match ind:
                         case 3:
                             lesson.name = value
@@ -118,11 +119,14 @@ def schedule_pdf_to_list(filepath: str, pages: range) -> list[APILesson]:
 
                             lesson.teacher = value
 
-    lessons_list = [lesson for lesson in lessons_list if hasattr(lesson, 'name')]
+    # merge all lists into one if lesson has attribute name
+    computed_lessons_list: list[Lesson] = [
+        lesson for lessons in lessons_list for lesson in lessons if hasattr(lesson, "name")
+    ]
 
     has_subgroups: bool = False
 
-    for lesson in lessons_list:
+    for lesson in computed_lessons_list:
         lesson.lesson_type = lesson.lesson_type.replace('a', 'а').replace('o', 'о').replace('і', 'i').replace('e', 'е').\
             replace('p', 'р')
         lesson.place = lesson.place.replace(' ', '')
@@ -141,7 +145,7 @@ def schedule_pdf_to_list(filepath: str, pages: range) -> list[APILesson]:
 
     api_lessons_list: list[APILesson] = []
 
-    for lesson in lessons_list:
+    for lesson in computed_lessons_list:
         api_lesson: APILesson = APILesson()
         # Gotta change this
         api_lesson.group_code = "ІП-94"

@@ -53,7 +53,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Finally, send the message
     await context.bot.send_message(
-        chat_id=DEVELOPER_CHAT_ID, text=message, parse_mode=ParseMode.HTML, protect_content=False
+        chat_id=DEVELOPER_CHAT_ID, text=message, parse_mode=ParseMode.HTML
     )
 
 
@@ -75,10 +75,7 @@ async def send_schedule_message(update: Update, schedule_date: date) -> None:
 
     error: Optional[str] = ScheduleAPI.check_response_for_errors(api_result)
     if error is not None:
-        await update.message.reply_text(
-            error,
-            protect_content=False
-        )
+        await update.message.reply_text(error)
         return
 
     json_data: list[dict] = api_result.json()
@@ -89,8 +86,7 @@ async def send_schedule_message(update: Update, schedule_date: date) -> None:
     if schedule is not None:
         await update.message.reply_text(
             schedule[0],
-            reply_markup=InlineKeyboardMarkup(schedule[1]),
-            protect_content=False
+            reply_markup=InlineKeyboardMarkup(schedule[1])
         )
         return
 
@@ -187,8 +183,7 @@ def main() -> None:
         disable_notification=True,
         disable_web_page_preview=True,
         allow_sending_without_reply=False,
-        tzinfo=pytz.timezone('Europe/Kiev'),
-        protect_content=True
+        tzinfo=pytz.timezone('Europe/Kiev')
     )
 
     application = Application.builder().token(bot_token).defaults(defaults).build()
