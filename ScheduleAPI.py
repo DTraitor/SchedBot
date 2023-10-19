@@ -83,4 +83,4 @@ def convert_daydata_to_string(
     ]
 
     group: Group = Group(data["group"])
-    return Day(data, schedule_date).get_telegram_message(group.name), keyboard
+    return Day(data, schedule_date).get_telegram_message(group.name if show_name else None), keyboard
