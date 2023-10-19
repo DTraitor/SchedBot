@@ -2,6 +2,7 @@ import logging
 import locale
 import html
 import json
+import os
 import sys
 import re
 
@@ -18,7 +19,7 @@ from datetime import date, timedelta, datetime
 from typing import Optional, Tuple, Any
 
 apiToken: Optional[str] = None
-
+baseUrl: str
 
 # Enable logging
 logging.basicConfig(
@@ -68,6 +69,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def send_schedule_message(update: Update, schedule_date: date) -> None:
     global apiToken
     api_result: requests.Response = ScheduleAPI.get_schedule_data(
+        baseUrl,
         update.message.chat_id,
         schedule_date,
         apiToken
@@ -130,6 +132,7 @@ async def update_schedule_callback(update: Update, context: ContextTypes.DEFAULT
 
     global apiToken
     api_result: requests.Response = ScheduleAPI.get_schedule_data(
+        baseUrl,
         update.callback_query.message.chat_id,
         schedule_date,
         apiToken
@@ -171,6 +174,8 @@ async def button_belongs_to_user(query: CallbackQuery):
 
 def main() -> None:
     bot_token: str = sys.argv[1]
+    global baseUrl
+    baseUrl = os.environ.get("SCHEDULE_BOT_URL_BASE", "https://api.crwnd.dev/schedule/violet")
 
     locale.setlocale(locale.LC_ALL, 'uk_UA.UTF-8')
 

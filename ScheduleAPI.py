@@ -6,16 +6,17 @@ from Group import Group
 import requests
 
 
-def make_api_get_request(url_path: str, data: dict) -> requests.Response:
-    return requests.get("https://api.crwnd.dev/schedule/violet" + url_path, data)
+def make_api_get_request(url_base: str, url_path: str, data: dict) -> requests.Response:
+    return requests.get(url_base + url_path, data)
 
 
 def get_schedule_data(
+    url_base: str,
     telegram_id: int,
     schedule_date: date,
     token: Optional[str]
 ) -> requests.Response:
-    return make_api_get_request('/scheduleBySubgroupsTg', {
+    return make_api_get_request(url_base, '/scheduleBySubgroupsTg', {
         "telegram_id": telegram_id,
         "year": schedule_date.year,
         "month": schedule_date.month,
@@ -45,6 +46,7 @@ def check_response_for_multiple_groups(
 
     keyboard: list[list[InlineKeyboardButton]] = [[]]
     group_data: dict
+    response_data.sort(key=lambda group: group["group"]["code"])
     for group_data in response_data:
         if len(keyboard[-1]) >= 3:
             keyboard.append([])
