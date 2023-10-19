@@ -24,11 +24,18 @@ class Day:
             for lesson_data in data["second_subgroup"]:
                 self.second_subgroup.append(Lesson(lesson_data))
 
-    def get_telegram_message(self) -> str:
+    def get_telegram_message(self, group_name: Optional[str]) -> str:
         if not len(self.first_subgroup) and (not self.second_subgroup or not len(self.second_subgroup)):
-            return f'{self.day_date.strftime("%d.%m")} ніяких пар немає!'
+            result: str = f'{self.day_date.strftime("%d.%m")} ({self.week_number}'
+            if group_name:
+                result += f', {group_name}'
+            result += ') ніяких пар немає!'
+            return result
         result: str = f'<b>Пари на {self.day_date.strftime("%d.%m")} '
-        result += f'({self.day_date.strftime("%A").capitalize()} {self.week_number}):</b>\n\n'
+        result += f'({self.day_date.strftime("%A").capitalize()} {self.week_number}'
+        if group_name:
+            result += f', {group_name}'
+        result += '):</b>\n\n'
         result += '<b>Перша підгрупа:</b>\n'
 
         nums_dict: dict[str, str] = {

@@ -123,9 +123,10 @@ async def update_schedule_callback(update: Update, context: ContextTypes.DEFAULT
     if not await button_belongs_to_user(update.callback_query):
         return
 
-    callback_data: list[str] = update.callback_query.data.split("|", 2)
+    callback_data: list[str] = update.callback_query.data.split("|")
     schedule_date: date = datetime.strptime(callback_data[1], "%d.%m.%Y")
     group_code: str = callback_data[2]
+    show_name: bool = "SHOW_NAME" in callback_data
 
     global apiToken
     api_result: requests.Response = ScheduleAPI.get_schedule_data(
@@ -147,7 +148,8 @@ async def update_schedule_callback(update: Update, context: ContextTypes.DEFAULT
         if group_data["group"]["code"] == group_code:
             schedule: Tuple[str, list[list[InlineKeyboardButton]]] = ScheduleAPI.convert_daydata_to_string(
                 group_data,
-                schedule_date
+                schedule_date,
+                show_name
             )
             await update.callback_query.edit_message_text(schedule[0], reply_markup=InlineKeyboardMarkup(schedule[1]))
             return

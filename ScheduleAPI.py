@@ -51,7 +51,7 @@ def check_response_for_multiple_groups(
         group: Group = Group(group_data["group"])
         keyboard[-1].append(InlineKeyboardButton(
             group.name,
-            callback_data=f'UPDATE_SCHEDULE|{schedule_date.strftime("%d.%m.%Y")}|{group.code}'
+            callback_data=f'UPDATE_SCHEDULE|{schedule_date.strftime("%d.%m.%Y")}|{group.code}|SHOW_NAME'
         ))
 
     return "До цього чату прив'язано декілька груп. Оберіть потрібну:", keyboard
@@ -59,7 +59,8 @@ def check_response_for_multiple_groups(
 
 def convert_daydata_to_string(
         data: dict,
-        schedule_date: date
+        schedule_date: date,
+        show_name: bool = False
 ) -> Tuple[str, list[list[InlineKeyboardButton]]]:
 
     keyboard = [
@@ -67,14 +68,17 @@ def convert_daydata_to_string(
             InlineKeyboardButton(
                 "⬅️ Попередній день",
                 callback_data=
-                f"UPDATE_SCHEDULE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}|{data['group']['code']}"
+                f"UPDATE_SCHEDULE|{(schedule_date - timedelta(hours=24)).strftime('%d.%m.%Y')}|"
+                f"{data['group']['code']}{('|SHOW_NAME' if show_name else '')}"
             ),
             InlineKeyboardButton(
                 "Наступний день ➡️",
                 callback_data=
-                f"UPDATE_SCHEDULE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}|{data['group']['code']}"
+                f"UPDATE_SCHEDULE|{(schedule_date + timedelta(hours=24)).strftime('%d.%m.%Y')}|"
+                f"{data['group']['code']}{('|SHOW_NAME' if show_name else '')}"
             )
         ]
     ]
 
-    return Day(data, schedule_date).get_telegram_message(), keyboard
+    group: Group = Group(data["group"])
+    return Day(data, schedule_date).get_telegram_message(group.name), keyboard
