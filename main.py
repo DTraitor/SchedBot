@@ -12,7 +12,8 @@ import requests
 import ScheduleAPI
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from telegram.ext import Application, CommandHandler, ContextTypes, Defaults, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, ContextTypes, Defaults, CallbackQueryHandler, MessageHandler
+from telegram.ext import filters
 from telegram.constants import ParseMode
 
 from datetime import date, timedelta, datetime
@@ -172,6 +173,10 @@ async def button_belongs_to_user(query: CallbackQuery):
     return True
 
 
+async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    return
+
+
 def main() -> None:
     bot_token: str = sys.argv[1]
     global baseUrl
@@ -199,6 +204,8 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("te", schedule_command))
     application.add_handler(CommandHandler("te_t", tomorrow_schedule_command))
+
+    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
 
     application.add_handler(CallbackQueryHandler(
         update_schedule_callback,

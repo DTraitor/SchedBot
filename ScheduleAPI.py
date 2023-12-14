@@ -3,11 +3,11 @@ from typing import Optional, Tuple
 from datetime import date, timedelta
 from Day import Day
 from Group import Group
-import requests
+import httpx
 
 
-def make_api_get_request(url_base: str, url_path: str, data: dict) -> requests.Response:
-    return requests.get(url_base + url_path, data)
+def make_api_get_request(url_base: str, url_path: str, data: dict) -> httpx.Response:
+    return httpx.get(url_base + url_path, params=data)
 
 
 def get_schedule_data(
@@ -15,7 +15,7 @@ def get_schedule_data(
     telegram_id: int,
     schedule_date: date,
     token: Optional[str]
-) -> requests.Response:
+) -> httpx.Response:
     return make_api_get_request(url_base, '/scheduleBySubgroupsTg', {
         "telegram_id": telegram_id,
         "year": schedule_date.year,
@@ -26,7 +26,7 @@ def get_schedule_data(
     })
 
 
-def check_response_for_errors(response: requests.Response) -> Optional[str]:
+def check_response_for_errors(response: httpx.Response) -> Optional[str]:
     if response.status_code == 200:
         return None
     match response.json()["error"]:
